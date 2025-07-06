@@ -51,18 +51,22 @@ class CategoryConfig:
         merchant = (receipt_data.merchant or '').lower()
         text = (receipt_data.raw_text or '').lower()
         
-        # Check all categories
-        all_categories = {**self.default_categories, **self.custom_categories}
+        # Check all categories (custom first, then default)
+        all_categories = {**self.custom_categories, **self.default_categories}
         
         for category, config in all_categories.items():
-            # Check merchant matches
+            # Check merchant matches first (more specific)
             for merchant_pattern in config['merchants']:
                 if merchant_pattern.lower() in merchant:
                     return category
             
-            # Check keyword matches
+            # Check keyword matches (be more restrictive to avoid false positives)
             for keyword in config['keywords']:
-                if keyword.lower() in text or keyword.lower() in merchant:
+                keyword_lower = keyword.lower()
+                # Require word boundaries or start of string for better matching
+                import re
+                pattern = r'\b' + re.escape(keyword_lower) + r'\b'
+                if re.search(pattern, text) or re.search(pattern, merchant):
                     return category
         
         return 'Other'

@@ -3,7 +3,16 @@ import io
 import pandas as pd
 from typing import List
 from fastapi.responses import StreamingResponse
-from models.receipt import ReceiptData
+
+# Use try/catch to handle import during testing
+try:
+    from models.receipt import ReceiptData
+except ImportError:
+    # For testing without full path setup
+    import sys
+    import os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from models.receipt import ReceiptData
 
 class ExportService:
     """Service for exporting receipt data to various formats"""

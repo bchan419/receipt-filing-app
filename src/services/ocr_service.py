@@ -2,7 +2,7 @@ import os
 import re
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, List
 from google.cloud import vision
 import io
 
@@ -94,8 +94,11 @@ class OCRService:
             line = line.strip()
             if len(line) > 2 and not re.match(r'^\d+[-/]\d+[-/]\d+', line):
                 # Skip obvious non-merchant lines
-                if not any(word in line.lower() for word in ['receipt', 'invoice', 'date', 'time']):
-                    return line
+                skip_words = ['receipt', 'invoice', 'date', 'time', 'total', 'amount', 'tax', 'subtotal', 'sum']
+                if not any(word in line.lower() for word in skip_words):
+                    # Also skip lines that look like amounts
+                    if not re.search(r'\$\d+', line) and not re.search(r'\d+\.\d+', line):
+                        return line
         return None
     
     def _extract_amount_and_currency(self, text: str) -> dict:
@@ -109,10 +112,25 @@ class OCRService:
             (r'([0-9,]+\.?\d*)\s*元', 'NTD'),   # Chinese Yuan symbol
         ]
         
-        # Look for total amount keywords
+        # Look for total amount keywords (prioritize "total" over "subtotal")
         total_keywords = ['total', 'amount', 'sum', '合計', '總計', '小計']
         lines = text.split('\n')
         
+        # First pass: look for "total" specifically
+        for line in lines:
+            line_lower = line.lower()
+            if 'total' in line_lower and 'subtotal' not in line_lower:
+                for pattern, currency in currency_patterns:
+                    match = re.search(pattern, line, re.IGNORECASE)
+                    if match:
+                        amount_str = match.group(1).replace(',', '')
+                        try:
+                            amount = Decimal(amount_str)
+                            return {'amount': amount, 'currency': currency}
+                        except:
+                            continue
+        
+        # Second pass: look for other total keywords
         for line in lines:
             line_lower = line.lower()
             if any(keyword in line_lower for keyword in total_keywords):
