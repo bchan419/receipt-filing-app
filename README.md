@@ -74,6 +74,15 @@ npm install
 
 ## 🔧 Manual Setup
 
+### Quick Start for Mobile Testing
+```bash
+# One-click mobile-friendly startup
+./start_mobile.sh
+
+# Get your IP address for mobile access
+./get_ip.sh
+```
+
 ### Backend Only
 ```bash
 source venv/bin/activate
@@ -82,10 +91,10 @@ export GOOGLE_CLOUD_PROJECT=your-project-id
 cd src && python main.py
 ```
 
-### Frontend Only
+### Frontend Only (with mobile access)
 ```bash
 cd frontend
-npm run dev
+npm run dev  # Now includes mobile network binding
 ```
 
 ## 📋 Usage

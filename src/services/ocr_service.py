@@ -103,30 +103,44 @@ class OCRService:
     
     def _extract_amount_and_currency(self, text: str) -> dict:
         """Extract total amount and currency"""
-        # Currency patterns for NTD, HKD, USD
+        # Currency patterns - NTD patterns first (prioritized for Taiwan)
         currency_patterns = [
+            # Taiwan New Dollar patterns (highest priority)
             (r'NT\$?\s*([0-9,]+\.?\d*)', 'NTD'),
+            (r'TWD\s*([0-9,]+\.?\d*)', 'NTD'),
+            (r'([0-9,]+\.?\d*)\s*元', 'NTD'),   # Chinese Yuan symbol
+            (r'新台幣\s*([0-9,]+\.?\d*)', 'NTD'),  # Traditional Chinese
+            (r'台幣\s*([0-9,]+\.?\d*)', 'NTD'),    # Simplified
+            
+            # Other currencies
             (r'HK\$?\s*([0-9,]+\.?\d*)', 'HKD'),
             (r'US\$?\s*([0-9,]+\.?\d*)', 'USD'),
-            (r'\$\s*([0-9,]+\.?\d*)', 'USD'),  # Default $ to USD
-            (r'([0-9,]+\.?\d*)\s*元', 'NTD'),   # Chinese Yuan symbol
+            
+            # Generic dollar sign - default to NTD for Taiwan context
+            (r'\$\s*([0-9,]+\.?\d*)', 'NTD'),
+            
+            # Numbers without currency symbol - assume NTD
+            (r'([0-9,]+\.?\d*)', 'NTD'),
         ]
         
         # Look for total amount keywords (prioritize "total" over "subtotal")
-        total_keywords = ['total', 'amount', 'sum', '合計', '總計', '小計']
+        total_keywords = ['total', 'amount', 'sum', '合計', '總計', '小計', '應付', '金額']
         lines = text.split('\n')
         
-        # First pass: look for "total" specifically
+        # First pass: look for "total" specifically with strong indicators
         for line in lines:
             line_lower = line.lower()
-            if 'total' in line_lower and 'subtotal' not in line_lower:
+            if ('total' in line_lower and 'subtotal' not in line_lower) or '合計' in line_lower or '總計' in line_lower:
                 for pattern, currency in currency_patterns:
                     match = re.search(pattern, line, re.IGNORECASE)
                     if match:
-                        amount_str = match.group(1).replace(',', '')
+                        amount_str = match.group(1).replace(',', '').replace(' ', '')
                         try:
-                            amount = Decimal(amount_str)
-                            return {'amount': amount, 'currency': currency}
+                            # Ensure we have a valid number
+                            if amount_str and amount_str.replace('.', '').isdigit():
+                                amount = Decimal(amount_str)
+                                if amount > 0:  # Ensure positive amount
+                                    return {'amount': amount, 'currency': currency}
                         except:
                             continue
         
@@ -137,23 +151,32 @@ class OCRService:
                 for pattern, currency in currency_patterns:
                     match = re.search(pattern, line, re.IGNORECASE)
                     if match:
-                        amount_str = match.group(1).replace(',', '')
+                        amount_str = match.group(1).replace(',', '').replace(' ', '')
                         try:
-                            amount = Decimal(amount_str)
-                            return {'amount': amount, 'currency': currency}
+                            if amount_str and amount_str.replace('.', '').isdigit():
+                                amount = Decimal(amount_str)
+                                if amount > 0:
+                                    return {'amount': amount, 'currency': currency}
                         except:
                             continue
         
-        # If no total found, look for any amount
-        for pattern, currency in currency_patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                amount_str = match.group(1).replace(',', '')
+        # Third pass: look for largest amount in the text (likely the total)
+        all_amounts = []
+        for pattern, currency in currency_patterns[:5]:  # Only check currency-specific patterns
+            for match in re.finditer(pattern, text, re.IGNORECASE):
+                amount_str = match.group(1).replace(',', '').replace(' ', '')
                 try:
-                    amount = Decimal(amount_str)
-                    return {'amount': amount, 'currency': currency}
+                    if amount_str and amount_str.replace('.', '').isdigit():
+                        amount = Decimal(amount_str)
+                        if amount > 0:
+                            all_amounts.append((amount, currency))
                 except:
                     continue
+        
+        # Return the largest amount found
+        if all_amounts:
+            largest_amount, currency = max(all_amounts, key=lambda x: x[0])
+            return {'amount': largest_amount, 'currency': currency}
         
         return {}
     

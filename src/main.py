@@ -16,10 +16,10 @@ load_dotenv()
 
 app = FastAPI(title="Receipt OCR App", version="1.0.0")
 
-# CORS middleware for frontend integration
+# CORS middleware for frontend integration (mobile-friendly)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure for production
+    allow_origins=["*"],  # Allow all origins for development (mobile testing)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

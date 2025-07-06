@@ -69,7 +69,7 @@ const ReceiptFilingApp = () => {
             merchant: result.data.merchant || 'Unknown',
             category: result.data.category || 'Other',
             amount: result.data.amount ? parseFloat(result.data.amount) : 0,
-            currency: result.data.currency || 'USD',
+            currency: result.data.currency || 'NTD',
             confidence: result.data.confidence || 0,
             items: result.data.items || [],
             raw_text: result.data.raw_text || ''
@@ -84,7 +84,7 @@ const ReceiptFilingApp = () => {
             merchant: 'Processing Failed',
             category: 'Other',
             amount: 0,
-            currency: 'USD',
+            currency: 'NTD',
             confidence: 0,
             error: result.error
           };
@@ -451,9 +451,9 @@ const ReceiptFilingApp = () => {
                             onChange={(e) => updateRow(row.id, 'currency', e.target.value)}
                             className="w-full px-2 py-1 border border-gray-300 rounded"
                           >
-                            <option value="NTD">NTD</option>
-                            <option value="HKD">HKD</option>
-                            <option value="USD">USD</option>
+                            <option value="NTD">NTD (台幣)</option>
+                            <option value="HKD">HKD (港幣)</option>
+                            <option value="USD">USD (美金)</option>
                           </select>
                         ) : (
                           row.currency
